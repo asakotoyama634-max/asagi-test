@@ -1,0 +1,187 @@
+<html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>サラリーマンアサギスト診断</title>
+<style>
+  body {
+    background: linear-gradient(180deg,#0b0b0f,#111);
+    color: #fff;
+    font-family: "Noto Sans JP", sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 16px;
+  }
+  h1 {
+    color: #ff3366;
+    font-size: 26px;
+    margin-bottom: 12px;
+  }
+  .quiz, .result {
+    max-width: 500px;
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px rgba(255,51,102,0.15);
+  }
+  .question {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 16px;
+  }
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  button.opt {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button.opt:hover, button.opt.selected {
+    background: linear-gradient(90deg,#ff3366,#ffb86b);
+    color: #111;
+  }
+  #progress {
+    margin-top: 14px;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  #progress i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg,#ff3366,#ffb86b);
+    width: 0%;
+  }
+  .result {
+    display: none;
+    text-align: center;
+  }
+  .result.active { display: block; }
+  .explosion {
+    font-size: 64px;
+    font-weight: 900;
+    color: #ff3366;
+    margin: 20px 0 10px;
+  }
+  .cta-line {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 12px 24px;
+    background: linear-gradient(90deg,#00c300,#00e676);
+    color: #111;
+    border-radius: 999px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .retry-btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 18px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .retry-btn:hover {
+    background: rgba(255,255,255,0.1);
+  }
+</style>
+</head>
+<body>
+  <h1>感情爆発診断💥</h1>
+  <p style="max-width:480px;text-align:center;color:#ccc;font-size:14px;margin-bottom:20px">
+    あなたの中に眠る“本音”を5問で暴くよ。<br>素直に答えてみて。
+  </p>
+
+  <div class="quiz" id="quizBox">
+    <div class="question" id="qText"></div>
+    <div class="options" id="optBox"></div>
+    <div id="progress"><i id="bar"></i></div>
+  </div>
+
+  <div class="result" id="resultBox">
+    <div class="explosion">💥</div>
+    <h2 id="rTitle"></h2>
+    <p id="rDesc" style="color:#ccc"></p>
+    <a class="cta-line" id="lineBtn" href="#" target="_blank">LINEに登録する</a><br>
+    <button class="retry-btn" id="retryBtn">もう一度診断する</button>
+  </div>
+
+<script>
+const QUESTIONS = [
+  {q:"仕事で一番我慢してることは？",a:["感情を出すこと","自分の意見を言うこと","休むこと","やりたいことを選ぶこと"]},
+  {q:"金曜日の夜、どう過ごしたい？",a:["何もせず寝たい","飲みに行く","趣味に没頭","誰かと語りたい"]},
+  {q:"上司にイラッとしたときは？",a:["笑って流す","心の中で叫ぶ","仲間に共有","直接言う"]},
+  {q:"人生で一番欲しいものは？",a:["安心","自由","刺激","愛"]},
+  {q:"自分の“欲望”をひとことで言うと？",a:["休みたい","遊びたい","表現したい","変えたい"]}
+];
+const TYPES = [
+  {title:"休息の王様",desc:"あなたは“頑張りすぎ注意”タイプ。心を休めたとき、爆発的な力を発揮する。"},
+  {title:"子供の太陽",desc:"楽しさがエネルギー。素直に遊ぶほど、あなたの世界が広がる。"},
+  {title:"貴族の感性",desc:"美しさと心地よさを大切にする人。自分のペースで輝くほど魅力全開。"},
+  {title:"社長の野望",desc:"挑戦で燃えるタイプ。やりたいことを宣言する瞬間、運が動き出す。"}
+];
+let step = 0;
+const answers=[];
+const qText=document.getElementById("qText");
+const optBox=document.getElementById("optBox");
+const bar=document.getElementById("bar");
+const quizBox=document.getElementById("quizBox");
+const resultBox=document.getElementById("resultBox");
+const retryBtn=document.getElementById("retryBtn");
+
+function renderQuestion(){
+  if(step>=QUESTIONS.length){showResult();return;}
+  const q=QUESTIONS[step];
+  qText.textContent=q.q;
+  optBox.innerHTML="";
+  q.a.forEach((txt,i)=>{
+    const b=document.createElement("button");
+    b.className="opt";
+    b.textContent=txt;
+    b.onclick=()=>{
+      answers.push(i);
+      step++;
+      bar.style.width=(step/QUESTIONS.length*100)+"%";
+      setTimeout(renderQuestion,200);
+    };
+    optBox.appendChild(b);
+  });
+}
+function showResult(){
+  quizBox.style.display="none";
+  resultBox.classList.add("active");
+  const sum=answers.reduce((a,b)=>a+b,0);
+  const type=TYPES[sum%TYPES.length];
+  document.getElementById("rTitle").textContent=type.title;
+  document.getElementById("rDesc").textContent=type.desc;
+  document.getElementById("lineBtn").href="https://lin.ee/your-line-link"; // ← あなたのLINE公式URLを入れてね
+}
+retryBtn.onclick=()=>{
+  step=0;
+  answers.length=0;
+  bar.style.width="0%";
+  quizBox.style.display="block";
+  resultBox.classList.remove("active");
+  renderQuestion();
+};
+renderQuestion();
+</script>
+</body>
+</html>
